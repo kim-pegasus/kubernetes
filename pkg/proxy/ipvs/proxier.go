@@ -30,7 +30,7 @@ import (
 
 	"k8s.io/klog"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -106,6 +106,7 @@ var iptablesChains = []struct {
 	{utiliptables.TableNAT, KubeNodePortChain},
 	{utiliptables.TableNAT, KubeLoadBalancerChain},
 	{utiliptables.TableNAT, KubeMarkMasqChain},
+	{utiliptables.TableNAT, KubeMarkDropChain},
 	{utiliptables.TableFilter, KubeForwardChain},
 }
 
@@ -1506,6 +1507,12 @@ func (proxier *Proxier) createAndLinkeKubeChain() {
 	// value should ever change.
 	writeLine(proxier.natRules, []string{
 		"-A", string(KubeMarkMasqChain),
+		"-j", "MARK", "--set-xmark", proxier.masqueradeMark,
+	}...)
+
+	// kubelet 이 생성하지 못하는 부분 재생성
+	writeLine(proxier.natRules, []string{
+		"-A", string(KubeMarkDropChain),
 		"-j", "MARK", "--set-xmark", proxier.masqueradeMark,
 	}...)
 }
